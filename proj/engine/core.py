@@ -35,7 +35,7 @@ class SSTIEngine(HttpClientMixin, TemplateDetectMixin, FiltersMixin, FileReadMix
     def one_click_attack(self, url, delay, log_cb, result_cb, filter_cb):
         self.reset_state()
         log_cb("=" * 60)
-        log_cb("SSTI 掃描開始 (模板偵測 + WAF偵測 + 讀檔搜尋，任意命令執行RCE已停用)")
+        log_cb("SSTI 掃描開始 (模板偵測 + WAF偵測 + 讀檔搜尋)")
         log_cb(f"目標: {url}")
         log_cb("=" * 60)
 
@@ -71,5 +71,5 @@ class SSTIEngine(HttpClientMixin, TemplateDetectMixin, FiltersMixin, FileReadMix
             self.findings = findings
 
         log_cb("=" * 60)
-        log_cb("掃描完成（RCE 功能已停用，僅執行讀檔）")
+        log_cb("掃描完成")
         return True

@@ -298,10 +298,6 @@ class TemplateDetectMixin:
         best_point = None
         best_reason = ""
 
-        # 猜測型注入點（例如 get_param 沒有既有 query string 時展開的整份候選
-        # 參數清單）數量可能很多，逐一列印會洗版日誌；改成每種類型只在第一次
-        # 進入時提示一次總數，之後同類型的點靜默測試，只有真的命中/有異常時
-        # 才輸出（見下方各 Step 的 log_cb）。
         type_seen_count = {}
         total_points = len(points)
 
