@@ -30,10 +30,16 @@ class SSTIOneClickGUI:
         input_frame.pack(fill=tk.X, pady=10)
 
         ttk.Label(input_frame, text="目標 URL:", font=('Microsoft JhengHei', 12)).pack(side=tk.LEFT, padx=5)
-        self.url_var = tk.StringVar(value="http://target.com/")
-        url_entry = ttk.Entry(input_frame, textvariable=self.url_var, width=70, font=('Consolas', 12))
+        self.URL_PLACEHOLDER = "http://example.com/"
+        self.url_var = tk.StringVar(value=self.URL_PLACEHOLDER)
+        self.url_is_placeholder = True
+        url_entry = ttk.Entry(input_frame, textvariable=self.url_var, width=70,
+                               font=('Consolas', 12), foreground='grey')
         url_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
         url_entry.bind('<Return>', lambda e: self.start_attack())
+        url_entry.bind('<FocusIn>', self._on_url_focus_in)
+        url_entry.bind('<FocusOut>', self._on_url_focus_out)
+        self.url_entry = url_entry
 
         btn_frame = ttk.Frame(main)
         btn_frame.pack(fill=tk.X, pady=10)
@@ -101,7 +107,22 @@ class SSTIOneClickGUI:
             status = "🚫 已過濾" if v else "✅ 可用"
             self.log(f"    {status} {k}")
 
+    def _on_url_focus_in(self, event):
+        if self.url_is_placeholder:
+            self.url_var.set('')
+            self.url_entry.config(foreground='black')
+            self.url_is_placeholder = False
+
+    def _on_url_focus_out(self, event):
+        if not self.url_var.get().strip():
+            self.url_var.set(self.URL_PLACEHOLDER)
+            self.url_entry.config(foreground='grey')
+            self.url_is_placeholder = True
+
     def start_attack(self):
+        if self.url_is_placeholder:
+            messagebox.showwarning("警告", "請輸入目標 URL")
+            return
         url = self.url_var.get().strip()
         if not url.startswith(('http://', 'https://')):
             messagebox.showwarning("警告", "URL 必須以 http:// 或 https:// 開頭")

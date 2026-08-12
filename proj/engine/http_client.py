@@ -28,13 +28,6 @@ class HttpClientMixin:
 
     @staticmethod
     def _inject_path_segments(url, payload):
-        """
-        對 URL path 中每一段（以 / 分隔的非空片段）逐一替換成 payload，
-        涵蓋 REST 風格路由如 /api/user/123 或 /render/{template} 這類
-        注入點不落在查詢字串、而是落在路徑片段本身的情況。
-        純數字或看起來像 UUID 的片段優先（較可能是可變動的資源識別碼），
-        但仍會嘗試全部片段，避免漏掉命名不規則的路由。
-        """
         parsed = urllib.parse.urlparse(url)
         segments = parsed.path.split('/')
         injected_urls = []
@@ -61,7 +54,11 @@ class HttpClientMixin:
                 injected_urls.append(parsed._replace(query=new_query).geturl())
             return injected_urls
         else:
-            return [f"{url}?{p}={urllib.parse.quote(payload)}" for p in COMMON_GET_PARAMS]
+            injected_urls = []
+            for p in COMMON_GET_PARAMS:
+                new_query = urllib.parse.urlencode({p: payload})
+                injected_urls.append(parsed._replace(query=new_query).geturl())
+            return injected_urls
 
     def send(self, url, method='GET', data=None, headers=None, cookies=None, payload='', timeout=None):
         to = timeout or self.timeout
@@ -114,21 +111,57 @@ class HttpClientMixin:
         except Exception as e:
             return f'ERROR:{e}', -2, 0
 
+    @staticmethod
+    def guess_get_param_points(url):
+        parsed = urllib.parse.urlparse(url)
+        existing_qs = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+        points = []
+        for param_name in COMMON_GET_PARAMS:
+            qs = dict(existing_qs)
+            qs[param_name] = ['']
+            new_query = urllib.parse.urlencode(qs, doseq=True)
+            point_url = parsed._replace(query=new_query).geturl()
+            points.append(('get_param', point_url, 'GET', param_name, f'URL查詢參數(猜測): {param_name}'))
+        return points
+
     def auto_discover(self, url, log_cb):
         points = []
-        base_url = url.split('?')[0]
+        base_url = urllib.parse.urlparse(url)._replace(query='', fragment='').geturl()
         log_cb("[*] 自動發現注入點...")
+
+        # path segment 注入點：涵蓋 REST 風格路由（/api/user/123）、或路由本身
+        # 就是注入點（/render/{template}）這類參數不落在 query string、而是
+        # path 片段本身的情況。不像 get_param 需要先確認參數存在才建 point，
+        # 這裡片段本身就是要拿去替換測試，因此不依賴任何前置的 200 驗證——
+        # 可繞過「先發基準請求探路由是否存在，一撞 404/400 就整條放棄」的問題。
+        #
+        # 片段內若混雜 '&' （常見於非標準/畸形網址，例如 /preview&mode=preview——
+        # urlparse 會把整段當成單一 path 片段，existing_params 抓不到 mode，
+        # 若整段一起替換成 payload，'&mode=preview' 這個必要開關值會被砍掉，
+        # 跟本工具最初修過的「query 參數互相覆蓋消失」是同一種分隔字元被
+        # 誤吃的問題，只是這次載體是 path。因此只替換 '&' 之前的本體，
+        # '&' 之後的原樣保留、跟著送出。
+        path_segments = [s for s in urllib.parse.urlparse(url).path.split('/') if s]
+        for seg_idx, seg in enumerate(path_segments):
+            seg_body = seg.split('&', 1)[0]
+            points.append(('path_segment', url, 'GET', seg_idx, f'URL路徑片段: {seg_body}'))
+
         # 比照 form_get：每個候選參數名各自是獨立的 point，而非把整批候選名塞給
         # HTTP 層自己在單一 point 裡逐一試錯——後者只能靠 status code 篩選猜測是否
         # 命中，但無法區分「猜對參數名」與「API 對任何參數都回 200」，見
-        # send_to_point 的 get_param 分支
+        # send_to_point 的 get_param 分支。
+        # 既有參數存在時只建既有參數的 point，不在此順便疊加 COMMON_GET_PARAMS
+        # 猜測清單——若既有參數（如 mode）只是控制流程走向的開關、真正的注入
+        # 參數（如 name）根本不在 URL 上，猜測 point 才是唯一能測到它的機會；
+        # 呼叫端（one_click_attack）在既有參數全部測完仍未命中時，才用
+        # guess_get_param_points() 補上猜測 point 重試，避免每次都無條件多打
+        # 一輪 12 個猜測參數造成的請求量暴增。
         existing_params = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
         if existing_params:
             for param_name in existing_params:
                 points.append(('get_param', url, 'GET', param_name, f'URL查詢參數: {param_name}'))
         else:
-            for param_name in COMMON_GET_PARAMS:
-                points.append(('get_param', base_url, 'GET', param_name, f'URL查詢參數(猜測): {param_name}'))
+            points.extend(self.guess_get_param_points(base_url))
         try:
             r = self.session.get(base_url, timeout=self.timeout, allow_redirects=True)
             log_cb(f"[*] 頁面請求狀態碼: {r.status_code} (最終網址: {r.url})")
@@ -199,7 +232,27 @@ class HttpClientMixin:
     def send_to_point(self, point, payload):
         ptype, url, method, data, desc = point
         try:
-            if ptype == 'get_param':
+            if ptype == 'path_segment':
+                # data 是 auto_discover 算好的片段索引；只替換該索引，其餘片段、
+                # query string、fragment 全部用 _replace() 保留原樣，不做裸字串
+                # 拼接，避免 payload 或既有片段中的 &/#/? 互相干擾。
+                # 若該片段本身混雜 '&'（見 auto_discover 對應註解），只替換
+                # '&' 之前的本體，'&' 之後的內容（如 mode=preview 這類必要
+                # 開關值）原樣保留、拼回 payload 之後一起送出。
+                parsed = urllib.parse.urlparse(url)
+                segments = parsed.path.split('/')
+                non_empty_idx = [i for i, s in enumerate(segments) if s]
+                target_idx = non_empty_idx[data]
+                seg_suffix = segments[target_idx].split('&', 1)
+                tail = ('&' + seg_suffix[1]) if len(seg_suffix) > 1 else ''
+                new_segments = list(segments)
+                new_segments[target_idx] = urllib.parse.quote(payload, safe='') + tail
+                new_path = '/'.join(new_segments)
+                test_url = parsed._replace(path=new_path).geturl()
+                t0 = time.time()
+                r = self.session.get(test_url, timeout=self.timeout, allow_redirects=True)
+                return r.text, r.status_code, time.time() - t0
+            elif ptype == 'get_param':
                 field_name = data or 'q'
                 parsed = urllib.parse.urlparse(url)
                 qs = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
