@@ -125,7 +125,7 @@ class HttpClientMixin:
         existing_params = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
         if existing_params:
             for param_name in existing_params:
-                points.append(('get_param', base_url, 'GET', param_name, f'URL查詢參數: {param_name}'))
+                points.append(('get_param', url, 'GET', param_name, f'URL查詢參數: {param_name}'))
         else:
             for param_name in COMMON_GET_PARAMS:
                 points.append(('get_param', base_url, 'GET', param_name, f'URL查詢參數(猜測): {param_name}'))
