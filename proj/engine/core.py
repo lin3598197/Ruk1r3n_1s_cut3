@@ -49,14 +49,7 @@ class SSTIEngine(HttpClientMixin, TemplateDetectMixin, FiltersMixin, FileReadMix
         log_cb("[Step 1/3] 模板偵測...")
         engine, conf, point, details = self.detect_template(points, log_cb)
 
-        # 既有參數（例如 mode=preview）全部測完仍未命中時，補上 COMMON_GET_PARAMS
-        # 猜測參數重試一輪——auto_discover 只在 URL 完全沒有 query string 時才會
-        # 自動猜測（見 http_client.py），若 URL 帶了控制流程走向的既有參數、但
-        # 真正的注入參數（如 name）根本不在 URL 上，第一輪永遠測不到它。
-        # 傳入原始 url（而非清空 query 的 base_url）：guess_get_param_points
-        # 會保留既有參數只疊加猜測參數，若改傳 base_url，mode=preview 這類
-        # 伺服器要求必存在才放行的參數會遺失，猜測 point 會全部先被伺服器
-        # 攔在模板渲染之前，跟猜測參數名對不對無關。
+
         if not engine and urllib.parse.urlparse(url).query:
             guess_points = self.guess_get_param_points(url)
             self.discovered_injection_points.extend(guess_points)

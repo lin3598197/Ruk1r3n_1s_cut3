@@ -23,18 +23,18 @@ class SSTIOneClickGUI:
         main = ttk.Frame(self.root, padding="15")
         main.pack(fill=tk.BOTH, expand=True)
 
-        ttk.Label(main, text="SSTI One-Click", font=('Microsoft JhengHei', 24, 'bold')).pack()
-        ttk.Label(main, text="僅供學習與授權滲透測試使用", foreground='red', font=('Microsoft JhengHei', 9)).pack(pady=(0, 15))
+        ttk.Label(main, text="SSTI One-Click", font=('TkDefaultFont', 24, 'bold')).pack()
+        ttk.Label(main, text="僅供學習與授權滲透測試使用", foreground='red', font=('TkDefaultFont', 9)).pack(pady=(0, 15))
 
         input_frame = ttk.Frame(main)
         input_frame.pack(fill=tk.X, pady=10)
 
-        ttk.Label(input_frame, text="目標 URL:", font=('Microsoft JhengHei', 12)).pack(side=tk.LEFT, padx=5)
+        ttk.Label(input_frame, text="目標 URL:", font=('TkDefaultFont', 12)).pack(side=tk.LEFT, padx=5)
         self.URL_PLACEHOLDER = "http://example.com/"
         self.url_var = tk.StringVar(value=self.URL_PLACEHOLDER)
         self.url_is_placeholder = True
         url_entry = ttk.Entry(input_frame, textvariable=self.url_var, width=70,
-                               font=('Consolas', 12), foreground='grey')
+                               font=('TkDefaultFont', 12), foreground='grey')
         url_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
         url_entry.bind('<Return>', lambda e: self.start_attack())
         url_entry.bind('<FocusIn>', self._on_url_focus_in)
@@ -45,13 +45,13 @@ class SSTIOneClickGUI:
         btn_frame.pack(fill=tk.X, pady=10)
 
         self.attack_btn = tk.Button(btn_frame, text="🚀 一鍵攻擊", command=self.start_attack,
-                                     font=('Microsoft JhengHei', 14, 'bold'), bg='#ff6b6b', fg='white',
+                                     font=('TkDefaultFont', 14, 'bold'), bg='#ff6b6b', fg='white',
                                      activebackground='#ee5a5a', activeforeground='white',
                                      padx=30, pady=10, cursor='hand2')
         self.attack_btn.pack(side=tk.LEFT, padx=5)
 
         self.stop_btn = tk.Button(btn_frame, text="⏹ 停止", command=self.stop_attack, state=tk.DISABLED,
-                                   font=('Microsoft JhengHei', 12), padx=20, pady=10)
+                                   font=('TkDefaultFont', 12), padx=20, pady=10)
         self.stop_btn.pack(side=tk.LEFT, padx=5)
 
         ttk.Button(btn_frame, text="💾 匯出報告", command=self.export_report).pack(side=tk.LEFT, padx=5)
@@ -65,21 +65,21 @@ class SSTIOneClickGUI:
 
         log_frame = ttk.Frame(result_nb, padding="5")
         result_nb.add(log_frame, text="📜 執行日誌")
-        self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, font=('Consolas', 10))
+        self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, font=('TkDefaultFont', 10))
         self.log_text.pack(fill=tk.BOTH, expand=True)
 
         raw_frame = ttk.Frame(result_nb, padding="5")
         result_nb.add(raw_frame, text="📄 原始命令輸出")
-        self.raw_text = scrolledtext.ScrolledText(raw_frame, wrap=tk.WORD, font=('Consolas', 10))
+        self.raw_text = scrolledtext.ScrolledText(raw_frame, wrap=tk.WORD, font=('TkDefaultFont', 10))
         self.raw_text.pack(fill=tk.BOTH, expand=True)
 
         detail_frame = ttk.Frame(result_nb, padding="5")
         result_nb.add(detail_frame, text="📊 詳細彙總")
-        self.detail_text = scrolledtext.ScrolledText(detail_frame, wrap=tk.WORD, font=('Consolas', 10))
+        self.detail_text = scrolledtext.ScrolledText(detail_frame, wrap=tk.WORD, font=('TkDefaultFont', 10))
         self.detail_text.pack(fill=tk.BOTH, expand=True)
 
         self.status_var = tk.StringVar(value="就緒 — 輸入 URL 後點擊「一鍵攻擊」")
-        ttk.Label(main, textvariable=self.status_var, font=('Consolas', 10), foreground='gray').pack(fill=tk.X, pady=5)
+        ttk.Label(main, textvariable=self.status_var, font=('TkDefaultFont', 10), foreground='gray').pack(fill=tk.X, pady=5)
 
         self.log("SSTI One-Click")
         self.log("=" * 60)

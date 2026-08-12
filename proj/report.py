@@ -19,7 +19,7 @@ def export_csv(fp, results_data):
 def export_html(fp, results_data):
     with open(fp, 'w', encoding='utf-8') as f:
         f.write('<html><head><meta charset="utf-8"><title>SSTI Report</title><style>')
-        f.write('body{font-family:monospace;max-width:1200px;margin:0 auto;padding:20px;}')
+        f.write('body{font-family:system-ui;max-width:1200px;margin:0 auto;padding:20px;}')
         f.write('table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ddd;padding:8px;text-align:left;}')
         f.write('th{background:#333;color:#fff;}pre{white-space:pre-wrap;word-wrap:break-word;background:#f4f4f4;padding:10px;border-radius:4px;}')
         f.write('</style></head><body>')
